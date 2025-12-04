@@ -92,10 +92,12 @@ impl WatcherContext {
                     luaurc.dependants.remove_by_right(path.clone());
                 }
 
-                let path_stem_str = path.file_stem()
-                    .map(|x| x.to_str().unwrap_or_default())
-                    .unwrap_or_else(|| "");
-                let _ = fs::remove_file(path.join(format!("../{}.model.json", path_stem_str)).normalize());
+                let mut output_path = self.output_dir
+                    .join(path.strip_prefix(&self.input_dir)
+                    .unwrap());
+
+                output_path.set_extension("model.json");
+                let _ = fs::remove_file(output_path);
 
             // We can't decipher if the deleted path is a file or a directory,
             // so we treat it as if it were a directory. This should be fine as
@@ -209,12 +211,11 @@ impl WatcherContext {
             let offset_input_dir = &self.input_dir.join(offset_dir).normalize();
 
             self.recursive_scan_create_and_clean(self.vfs.read_dir(offset_input_dir));
-
         } else {
             let offset_input_dir = &self.input_dir.join(offset_dir).normalize();
-            let offset_output_dir = &self.output_dir.join(offset_dir).normalize();
+            // let offset_output_dir = &self.output_dir.join(offset_dir).normalize();
 
-            self.recursive_scan_clean(self.vfs.read_dir(offset_output_dir));
+            // self.recursive_scan_clean(self.vfs.read_dir(offset_output_dir));
             self.recursive_scan_create(self.vfs.read_dir(offset_input_dir));
         }
     }
@@ -262,7 +263,11 @@ impl WatcherContext {
         }
     }
 
-    fn recursive_scan_clean(&mut self, dir: Result<ReadDir, std::io::Error>) {
+    // NOTE: Had to kill this function because it causes conflicts when multiple
+    // watchers share the same output directory. Each watcher would try to clean files
+    // created by other watchers.
+
+    /*fn recursive_scan_clean(&mut self, dir: Result<ReadDir, std::io::Error>) {
         let dir = guarded_unwrap!(dir, return);
 
         for entry in dir {
@@ -280,7 +285,7 @@ impl WatcherContext {
                 let _ = fs::remove_file(path);
             }
         }
-    }
+    }*/
 
     fn new(
         vfs: Vfs, 
